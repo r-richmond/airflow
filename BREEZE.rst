@@ -746,6 +746,10 @@ pushes changed to the constraint files, however you can also perform test run of
 
   ./breeze generate-constraints --python 3.8
 
+.. code-block:: bash
+
+  ./breeze generate-constraints --python 3.9
+
 This bumps the constraint files to latest versions and stores hash of setup.py. The generated constraint
 and setup.py hash files are stored in the ``files`` folder and while generating the constraints diff
 of changes vs the previous constraint files is printed.
@@ -765,7 +769,7 @@ To use your host IDE with Breeze:
    `pyenv <https://github.com/pyenv/pyenv>`_, `pyenv-virtualenv <https://github.com/pyenv/pyenv-virtualenv>`_,
    or `virtualenvwrapper <https://virtualenvwrapper.readthedocs.io/en/latest/>`_.
 
-   Ideally, you should have virtualenvs for all Python versions supported by Airflow (3.5, 3.6, 3.7)
+   Ideally, you should have virtualenvs for all Python versions supported by Airflow (3.5, 3.6, 3.7, 3.8, 3.9)
 
 2. Use the right command to activate the virtualenv (``workon`` if you use virtualenvwrapper or
    ``pyenv activate`` if you use pyenv.
@@ -774,7 +778,7 @@ To use your host IDE with Breeze:
 
 .. code-block:: bash
 
-  ./breeze initialize-local-virtualenv --python 3.8
+  ./breeze initialize-local-virtualenv --python 3.9
 
 4. Select the virtualenv you created as the project's default virtualenv in your IDE.
 
@@ -1200,7 +1204,7 @@ This is the current syntax for  `./breeze <./breeze>`_:
 
           One of:
 
-                 2.7 3.5 3.6 3.7 3.8
+                 2.7 3.5 3.6 3.7 3.8 3.9
 
   -a, --install-airflow-version INSTALL_AIRFLOW_VERSION
           If specified, installs Airflow directly from PIP released version. This happens at
@@ -1414,7 +1418,7 @@ This is the current syntax for  `./breeze <./breeze>`_:
 
           One of:
 
-                 2.7 3.5 3.6 3.7 3.8
+                 2.7 3.5 3.6 3.7 3.8 3.9
 
   -I, --production-image
           Use production image for entering the environment and builds (not for tests).
@@ -1468,7 +1472,7 @@ This is the current syntax for  `./breeze <./breeze>`_:
 
           One of:
 
-                 2.7 3.5 3.6 3.7 3.8
+                 2.7 3.5 3.6 3.7 3.8 3.9
 
   -v, --verbose
           Show verbose information about executed docker, kind, kubectl, helm commands. Useful for
@@ -1575,7 +1579,7 @@ This is the current syntax for  `./breeze <./breeze>`_:
 
           One of:
 
-                 2.7 3.5 3.6 3.7 3.8
+                 2.7 3.5 3.6 3.7 3.8 3.9
 
 
   ####################################################################################################
@@ -1707,7 +1711,7 @@ This is the current syntax for  `./breeze <./breeze>`_:
 
           One of:
 
-                 2.7 3.5 3.6 3.7 3.8
+                 2.7 3.5 3.6 3.7 3.8 3.9
 
   -b, --backend BACKEND
           Backend to use for tests - it determines which database is used.
@@ -1770,7 +1774,7 @@ This is the current syntax for  `./breeze <./breeze>`_:
 
           One of:
 
-                 2.7 3.5 3.6 3.7 3.8
+                 2.7 3.5 3.6 3.7 3.8 3.9
 
   -F, --force-build-images
           Forces building of the local docker images. The images are rebuilt
@@ -2109,7 +2113,7 @@ This is the current syntax for  `./breeze <./breeze>`_:
 
           One of:
 
-                 2.7 3.5 3.6 3.7 3.8
+                 2.7 3.5 3.6 3.7 3.8 3.9
 
   ****************************************************************************************************
    Choose backend to run for Airflow
