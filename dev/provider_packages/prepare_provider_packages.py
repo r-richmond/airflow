@@ -34,6 +34,7 @@ from os.path import dirname
 from shutil import copyfile
 from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Type
 
+import yaml
 from packaging.version import Version
 
 PROVIDER_TEMPLATE_PREFIX = "PROVIDER_"
@@ -618,10 +619,10 @@ def get_package_class_summary(
     :param imported_classes: entities imported_from providers
     :return: dictionary of objects usable as context for JINJA2 templates - or None if there are some errors
     """
-    from airflow.hooks.base_hook import BaseHook
+    from airflow.hooks.base import BaseHook
     from airflow.models.baseoperator import BaseOperator
     from airflow.secrets import BaseSecretsBackend
-    from airflow.sensors.base_sensor_operator import BaseSensorOperator
+    from airflow.sensors.base import BaseSensorOperator
 
     all_verified_entities: Dict[EntityType, VerifiedEntities] = {
         EntityType.Operators: find_all_entities(
@@ -947,7 +948,7 @@ def check_if_release_version_ok(
             if backport_packages:
                 current_release_version = (datetime.today() + timedelta(days=5)).strftime('%Y.%m.%d')
             else:
-                current_release_version = "0.0.1"  # TODO: replace with maintained version
+                current_release_version = "1.0.0"  # TODO: replace with maintained version
     if previous_release_version:
         if Version(current_release_version) < Version(previous_release_version):
             print(
@@ -1133,6 +1134,14 @@ def get_package_pip_name(provider_package_id: str, backport_packages: bool):
         return f"apache-airflow-providers-{provider_package_id.replace('.', '-')}"
 
 
+def get_provider_info(provider_package_id: str):
+    provider_yaml_file_name = os.path.join(get_source_package_path(provider_package_id), "provider.yaml")
+    if not os.path.exists(provider_yaml_file_name):
+        raise Exception(f"The provider.yaml file is missing: {provider_yaml_file_name}")
+    with open(provider_yaml_file_name) as provider_file:
+        return yaml.safe_load(provider_file.read())
+
+
 def update_generated_files_for_package(
     provider_package_id: str,
     current_release_version: str,
@@ -1201,6 +1210,7 @@ def update_generated_files_for_package(
         "EXTRAS_REQUIREMENTS": get_package_extras(
             provider_package_id=provider_package_id, backport_packages=backport_packages
         ),
+        "PROVIDER_INFO": get_provider_info(provider_package_id),
     }
     if update_release_notes:
         git_cmd = get_git_command(previous_release)
@@ -1238,6 +1248,7 @@ def update_generated_files_for_package(
     if update_setup:
         prepare_setup_py_file(context)
         prepare_setup_cfg_file(context)
+        prepare_get_provider_info_py_file(context, provider_package_id)
         prepare_manifest_in_file(context)
 
     bad = bad + sum([len(entity_summary.wrong_entities) for entity_summary in entity_summaries.values()])
@@ -1312,29 +1323,46 @@ def prepare_readme_and_changes_files(
 
 
 def prepare_setup_py_file(context):
-    setup_template_name = "SETUP"
-    setup_file_path = os.path.abspath(os.path.join(get_target_folder(), "setup.py"))
-    setup_content = render_template(
-        template_name=setup_template_name, context=context, extension='.py', autoescape=False
+    setup_py_template_name = "SETUP"
+    setup_py_file_path = os.path.abspath(os.path.join(get_target_folder(), "setup.py"))
+    setup_py_content = render_template(
+        template_name=setup_py_template_name, context=context, extension='.py', autoescape=False
     )
-    with open(setup_file_path, "wt") as setup_file:
-        setup_file.write(setup_content)
+    with open(setup_py_file_path, "wt") as setup_py_file:
+        setup_py_file.write(setup_py_content)
     # format the generated setup.py
-    subprocess.run(["black", setup_file_path, "--config=./pyproject.toml"], cwd=SOURCE_DIR_PATH)
+    subprocess.run(["black", setup_py_file_path, "--config=./pyproject.toml"], cwd=SOURCE_DIR_PATH)
 
 
 def prepare_setup_cfg_file(context):
-    setup_template_name = "SETUP"
-    setup_file_path = os.path.abspath(os.path.join(get_target_folder(), "setup.cfg"))
-    setup_content = render_template(
-        template_name=setup_template_name,
+    setup_cfg_template_name = "SETUP"
+    setup_cfg_file_path = os.path.abspath(os.path.join(get_target_folder(), "setup.cfg"))
+    setup_cfg_content = render_template(
+        template_name=setup_cfg_template_name,
         context=context,
         extension='.cfg',
         autoescape=False,
         keep_trailing_newline=True,
     )
-    with open(setup_file_path, "wt") as setup_file:
-        setup_file.write(setup_content)
+    with open(setup_cfg_file_path, "wt") as setup_cfg_file:
+        setup_cfg_file.write(setup_cfg_content)
+
+
+def prepare_get_provider_info_py_file(context, provider_package_id: str):
+    get_provider_template_name = "get_provider_info"
+    get_provider_file_path = os.path.abspath(
+        os.path.join(get_target_providers_package_folder(provider_package_id), "get_provider_info.py")
+    )
+    get_provider_content = render_template(
+        template_name=get_provider_template_name,
+        context=context,
+        extension='.py',
+        autoescape=False,
+        keep_trailing_newline=True,
+    )
+    with open(get_provider_file_path, "wt") as get_provider_file:
+        get_provider_file.write(get_provider_content)
+    subprocess.run(["black", get_provider_file_path, "--config=./pyproject.toml"], cwd=SOURCE_DIR_PATH)
 
 
 def prepare_manifest_in_file(context):
@@ -1524,7 +1552,7 @@ ERROR! Wrong first param: {sys.argv[1]}
         sys.exit(1)
 
     if sys.argv[1] == LIST_PROVIDERS_PACKAGES:
-        providers = PROVIDERS_REQUIREMENTS.keys()
+        providers = list(PROVIDERS_REQUIREMENTS.keys())
         for provider in providers:
             print(provider)
         sys.exit(0)
@@ -1560,7 +1588,6 @@ ERROR! Wrong first param: {sys.argv[1]}
         print("Generate setup files")
         print()
         provider = sys.argv[2]
-        make_sure_remote_apache_exists_and_fetch()
         update_generated_files_for_package(
             provider, "", suffix, [], BACKPORT_PACKAGES, update_release_notes=False, update_setup=True
         )
@@ -1568,9 +1595,16 @@ ERROR! Wrong first param: {sys.argv[1]}
     _provider_package = sys.argv[1]
     verify_provider_package(_provider_package)
     del sys.argv[1]
-    print(f"Building backport package: {_provider_package}")
+    package_format = os.environ.get("PACKAGE_FORMAT", "wheel")
+    print(f"Building backport package: {_provider_package} in format ${package_format}")
     copy_readme_and_changelog(_provider_package, BACKPORT_PACKAGES)
-    command = ["python3", "setup.py", "--version-suffix-for-pypi", suffix, "sdist", "bdist_wheel"]
+    command = ["python3", "setup.py"]
+    if suffix != "":
+        command.extend(['egg_info', '--tag-build', suffix])
+    if package_format in ['sdist', 'both']:
+        command.append("sdist")
+    if package_format in ['wheel', 'both']:
+        command.append("bdist_wheel")
     print(f"Executing command: '{command}'")
     subprocess.check_call(
         command,

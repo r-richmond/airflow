@@ -53,7 +53,7 @@ from pandas_gbq.gbq import (
 )
 
 from airflow.exceptions import AirflowException
-from airflow.hooks.dbapi_hook import DbApiHook
+from airflow.hooks.dbapi import DbApiHook
 from airflow.providers.google.common.hooks.base_google import GoogleBaseHook
 from airflow.utils.helpers import convert_camel_to_snake
 from airflow.utils.log.logging_mixin import LoggingMixin
@@ -67,11 +67,14 @@ BigQueryJob = Union[CopyJob, QueryJob, LoadJob, ExtractJob]
 class BigQueryHook(GoogleBaseHook, DbApiHook):
     """Interact with BigQuery. This hook uses the Google Cloud connection."""
 
-    conn_name_attr = 'gcp_conn_id'  # type: str
+    conn_name_attr = 'gcp_conn_id'
+    default_conn_name = 'google_cloud_default'
+    conn_type = 'google_cloud_platform'
+    hook_name = 'Google Cloud'
 
     def __init__(
         self,
-        gcp_conn_id: str = 'google_cloud_default',
+        gcp_conn_id: str = default_conn_name,
         delegate_to: Optional[str] = None,
         use_legacy_sql: bool = True,
         location: Optional[str] = None,
@@ -711,7 +714,7 @@ class BigQueryHook(GoogleBaseHook, DbApiHook):
 
         table = Table.from_api_repr(table_resource)
         self.log.info('Updating table: %s', table_resource["tableReference"])
-        table_object = self.get_client().update_table(table=table, fields=fields)
+        table_object = self.get_client(project_id=project_id).update_table(table=table, fields=fields)
         self.log.info('Table %s.%s.%s updated successfully', project_id, dataset_id, table_id)
         return table_object.to_api_repr()
 
@@ -1334,7 +1337,7 @@ class BigQueryHook(GoogleBaseHook, DbApiHook):
         """
         table_ref = TableReference(dataset_ref=DatasetReference(project_id, dataset_id), table_id=table_id)
         table = self.get_client(project_id=project_id).get_table(table_ref)
-        return {"fields": [s.to_api_repr for s in table.schema]}
+        return {"fields": [s.to_api_repr() for s in table.schema]}
 
     @GoogleBaseHook.fallback_to_default_project_id
     def poll_job_complete(
