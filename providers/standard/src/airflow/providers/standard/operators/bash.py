@@ -169,6 +169,7 @@ class BashOperator(BaseOperator):
         skip_on_exit_code: int | Container[int] | None = 99,
         cwd: str | None = None,
         output_processor: Callable[[str], Any] = lambda result: result,
+        disable_task_isolation: bool = False,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -188,6 +189,9 @@ class BashOperator(BaseOperator):
         self._is_inline_cmd = None
         if isinstance(bash_command, str):
             self._is_inline_cmd = self._is_inline_command(bash_command=bash_command)
+        if disable_task_isolation:
+            setting = {"AIRFLOW_DISABLE_TASK_ISOLATION": "1"}
+            self.env = self.env | setting if self.env is not None else setting
 
     @cached_property
     def subprocess_hook(self):

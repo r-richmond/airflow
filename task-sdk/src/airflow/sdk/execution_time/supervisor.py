@@ -272,6 +272,11 @@ def block_orm_access():
     import the models and use them. This does what it can to disable that if it is not blocked at the network
     level
     """
+
+    if 'AIRFLOW_DISABLE_TASK_ISOLATION' in os.environ:
+        # allow users to disable task isolation for things
+        return None
+
     # A fake URL schema that might give users some clue what's going on. Hopefully
     conn = "airflow-db-not-allowed:///"
     if "airflow.settings" in sys.modules:
